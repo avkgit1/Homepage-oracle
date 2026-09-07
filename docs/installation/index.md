@@ -69,11 +69,16 @@ For OIDC login (overrides password login):
 - `HOMEPAGE_OIDC_CLIENT_ID`
 - `HOMEPAGE_OIDC_CLIENT_SECRET`
 - Optional: `HOMEPAGE_OIDC_NAME` (display name), `HOMEPAGE_OIDC_SCOPE` (defaults to `openid email profile`)
+- Optional: `HOMEPAGE_OIDC_AUTO_LOGIN=true` to skip the login page and send unauthenticated visitors straight to the provider
+
+!!! tip
+
+    With auto-login enabled, visit `/auth/signin?autologin=0` to reach the login page without being redirected, e.g. in case something goes wrong!
 
 !!! warning
 
     Homepage grants access to any identity that the configured OIDC provider authorizes for this client. Configure client assignments, groups, or access policies at the identity provider. Homepage does not apply additional claim-based authorization.
 
-All app pages and `/api` routes except `/api/healthcheck` will require a signed-in session. Static assets remain public.
+All app pages and `/api` routes except `/api/healthcheck` and `/api/config/custom.css` will require a signed-in session. Static assets remain public.
 
 Configure your OIDC provider with the a callback URI like `https://homepage.example.com/api/auth/callback/homepage-oidc`.

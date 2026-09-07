@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-import { isAuthEnabled } from "utils/env";
+import { applyNextAuthEnv, isAuthEnabled } from "utils/env";
 import createLogger from "utils/logger";
 
 const MIN_AUTH_SECRET_LENGTH = 32;
@@ -12,20 +12,13 @@ const authEnabled = isAuthEnabled();
 const issuer = process.env.HOMEPAGE_OIDC_ISSUER;
 const clientId = process.env.HOMEPAGE_OIDC_CLIENT_ID;
 const clientSecret = process.env.HOMEPAGE_OIDC_CLIENT_SECRET;
-const homepageAuthSecret = process.env.HOMEPAGE_AUTH_SECRET;
-const homepageExternalUrl = process.env.HOMEPAGE_EXTERNAL_URL;
 const homepageAuthPassword = process.env.HOMEPAGE_AUTH_PASSWORD;
 const homepageAuthPasswordDigest = homepageAuthPassword
   ? createHash("sha256").update(homepageAuthPassword, "utf8").digest()
   : null;
 
-// Map HOMEPAGE_* envs to what NextAuth expects
-if (!process.env.NEXTAUTH_SECRET && homepageAuthSecret) {
-  process.env.NEXTAUTH_SECRET = homepageAuthSecret;
-}
-if (!process.env.NEXTAUTH_URL && homepageExternalUrl) {
-  process.env.NEXTAUTH_URL = homepageExternalUrl;
-}
+// Also done in instrumentation.js
+applyNextAuthEnv();
 
 const defaultScope = process.env.HOMEPAGE_OIDC_SCOPE || "openid email profile";
 const cleanedIssuer = issuer ? issuer.replace(/\/+$/, "") : issuer;
@@ -76,6 +69,16 @@ if (authEnabled) {
 // Give fail2ban / CrowdSec etc something to match on
 function logFailedPasswordSignIn() {
   createLogger("nextauth").warn("Failed password sign-in attempt");
+}
+
+function logNextAuthError(code, metadata) {
+  const error = metadata instanceof Error ? metadata : metadata?.error;
+
+  if (error?.message) {
+    createLogger("nextauth").error("%s: %s", code, error.message);
+  } else {
+    createLogger("nextauth").error("%s", code);
+  }
 }
 
 let providers = [];
@@ -147,7 +150,7 @@ export const authOptions = {
     signIn: "/auth/signin",
   },
   logger: {
-    error: (code) => createLogger("nextauth").error("%s", code),
+    error: logNextAuthError,
     warn: (code) => createLogger("nextauth").warn("%s", code),
     debug: (code) => createLogger("nextauth").debug("%s", code),
   },
